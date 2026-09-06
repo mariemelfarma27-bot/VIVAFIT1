@@ -29,6 +29,9 @@
     <!-- Workouts CSS -->
     <link rel="stylesheet" href="css/workouts.css">
 
+    <!-- Workout Modal CSS -->
+    <link rel="stylesheet" href="css/workout-modal.css">
+
 </head>
 
 
@@ -216,7 +219,7 @@
             </div>
 
 
-            <button class="btn-red">
+            <button class="btn-red" id="todayStartBtn">
                 Start Workout
                 <i class="fa-solid fa-arrow-right"></i>
             </button>
@@ -249,202 +252,9 @@
 
 
 
-        <!-- WORKOUT GRID -->
+        <!-- WORKOUT GRID (rendered by JS) -->
 
         <div class="workout-grid">
-
-
-            <!-- UPPER BODY -->
-
-            <div class="workout-card">
-
-                <div class="icon-box">
-
-                    <i class="fa-solid fa-dumbbell"></i>
-
-                </div>
-
-
-                <div class="card-body">
-
-                    <h3>
-                        Upper Body
-                    </h3>
-
-                    <p>
-                        Build stronger arms, chest and back.
-                    </p>
-
-
-                    <div class="meta">
-
-                        <span>
-                            <i class="fa-regular fa-clock"></i>
-                            40 min
-                        </span>
-
-                        <span>
-                            <i class="fa-solid fa-chart-simple"></i>
-                            Medium
-                        </span>
-
-                    </div>
-
-                </div>
-
-
-                <button class="btn-red">
-                    Start Workout
-                    <i class="fa-solid fa-arrow-right"></i>
-                </button>
-
-            </div>
-
-
-
-            <!-- LOWER BODY -->
-
-            <div class="workout-card">
-
-                <div class="icon-box">
-
-                    <i class="fa-solid fa-person-running"></i>
-
-                </div>
-
-
-                <div class="card-body">
-
-                    <h3>
-                        Lower Body
-                    </h3>
-
-                    <p>
-                        Stronger legs and glutes for a fitter you.
-                    </p>
-
-
-                    <div class="meta">
-
-                        <span>
-                            <i class="fa-regular fa-clock"></i>
-                            45 min
-                        </span>
-
-                        <span>
-                            <i class="fa-solid fa-chart-simple"></i>
-                            Medium
-                        </span>
-
-                    </div>
-
-                </div>
-
-
-                <button class="btn-red">
-                    Start Workout
-                    <i class="fa-solid fa-arrow-right"></i>
-                </button>
-
-            </div>
-
-
-
-            <!-- FULL BODY -->
-
-            <div class="workout-card">
-
-                <div class="icon-box">
-
-                    <i class="fa-solid fa-heart-pulse"></i>
-
-                </div>
-
-
-                <div class="card-body">
-
-                    <h3>
-                        Full Body
-                    </h3>
-
-                    <p>
-                        A complete workout for total fitness.
-                    </p>
-
-
-                    <div class="meta">
-
-                        <span>
-                            <i class="fa-regular fa-clock"></i>
-                            50 min
-                        </span>
-
-                        <span class="hard">
-                            <i class="fa-solid fa-chart-simple"></i>
-                            Hard
-                        </span>
-
-                    </div>
-
-                </div>
-
-
-                <button class="btn-red">
-                    Start Workout
-                    <i class="fa-solid fa-arrow-right"></i>
-                </button>
-
-            </div>
-
-
-
-            <!-- CARDIO -->
-
-            <div class="workout-card">
-
-                <div class="icon-box">
-
-                    <i class="fa-solid fa-person-running"></i>
-
-                </div>
-
-
-                <div class="card-body">
-
-                    <h3>
-                        Cardio Blast
-                    </h3>
-
-                    <p>
-                        Boost endurance and burn calories.
-                    </p>
-
-
-                    <div class="meta">
-
-                        <span>
-                            <i class="fa-regular fa-clock"></i>
-                            30 min
-                        </span>
-
-                        <span class="easy">
-                            <i class="fa-solid fa-chart-simple"></i>
-                            Easy
-                        </span>
-
-                    </div>
-
-                </div>
-
-
-                <button class="btn-red">
-                    Start Workout
-                    <i class="fa-solid fa-arrow-right"></i>
-                </button>
-
-            </div>
-
-
         </div>
 
 
@@ -512,7 +322,108 @@
     </main>
 
 
-    <!-- Workouts JavaScript -->
+
+    <!-- =========================
+         WORKOUT MODAL
+    ========================== -->
+
+    <div class="modal-overlay" id="workoutModal">
+
+        <div class="modal-card">
+
+            <div class="modal-header">
+
+                <div class="modal-header-content">
+
+                    <div class="modal-icon" id="modalIcon">
+
+                        <i class="fa-solid fa-dumbbell"></i>
+
+                    </div>
+
+                    <div class="modal-header-text">
+
+                        <h2 id="modalTitle">Workout Name</h2>
+
+                        <p id="modalDescription">Workout description goes here.</p>
+
+                    </div>
+
+                </div>
+
+                <button class="modal-close" id="modalClose">
+
+                    <i class="fa-solid fa-xmark"></i>
+
+                </button>
+
+            </div>
+
+            <div class="modal-meta">
+
+                <div class="modal-meta-item">
+
+                    <i class="fa-regular fa-clock"></i>
+
+                    <span id="modalDuration">30 min</span>
+
+                </div>
+
+                <div class="modal-meta-item">
+
+                    <i class="fa-solid fa-chart-simple"></i>
+
+                    <span id="modalDifficulty">Medium</span>
+
+                </div>
+
+                <div class="modal-meta-item">
+
+                    <i class="fa-solid fa-layer-group"></i>
+
+                    <span id="modalCategory">Strength</span>
+
+                </div>
+
+            </div>
+
+            <div class="modal-body">
+
+                <p class="modal-section-title">EXERCISES</p>
+
+                <ul class="exercise-list" id="modalExerciseList">
+
+                    <!-- Exercises injected by JS -->
+
+                </ul>
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button class="btn-modal-save" id="modalSaveBtn">
+
+                    <i class="fa-solid fa-plus"></i>
+
+                    Add to My Workouts
+
+                </button>
+
+                <button class="btn-modal-cancel" id="modalCancelBtn">
+
+                    Close
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- Workouts JS -->
     <script src="js/workouts.js"></script>
 
 </body>
