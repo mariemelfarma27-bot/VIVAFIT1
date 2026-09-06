@@ -155,3 +155,121 @@ logoutButton.addEventListener("click", function () {
         "login.html";
 
 });
+
+
+// =========================================
+// SAVED WORKOUTS
+// =========================================
+
+const savedWorkoutsContainer =
+    document.getElementById("savedWorkouts");
+
+
+function getSavedWorkouts() {
+
+    try {
+        return JSON.parse(
+            localStorage.getItem("vivafitWorkouts")
+        ) || [];
+    } catch {
+        return [];
+    }
+
+}
+
+
+function formatDate(dateString) {
+
+    const date = new Date(dateString);
+
+    return date.toLocaleDateString("en-US", {
+
+        month: "short",
+
+        day: "numeric",
+
+        year: "numeric"
+
+    });
+
+}
+
+
+function renderSavedWorkouts() {
+
+    const workouts = getSavedWorkouts();
+
+
+    if (workouts.length === 0) {
+
+        savedWorkoutsContainer.innerHTML = `
+            <div class="workouts-empty">
+                <i class="fa-solid fa-dumbbell"></i>
+                No saved workouts yet.<br>
+                Go to Workouts to add some!
+            </div>
+        `;
+
+        return;
+
+    }
+
+
+    savedWorkoutsContainer.innerHTML = workouts.map(function (w) {
+
+        return `
+            <div class="saved-workout-card" data-id="${w.id}">
+                <button
+                    class="remove-workout-btn"
+                    data-id="${w.id}"
+                    title="Remove workout">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+                <div class="card-icon">
+                    <i class="${w.icon || 'fa-solid fa-dumbbell'}"></i>
+                </div>
+                <div class="card-name">${w.name}</div>
+                <div class="card-category">${w.category}</div>
+                <div class="card-date">Added ${formatDate(w.addedAt)}</div>
+            </div>
+        `;
+
+    }).join("");
+
+}
+
+
+function removeWorkout(id) {
+
+    let workouts = getSavedWorkouts();
+
+    workouts = workouts.filter(function (w) {
+
+        return w.id !== id;
+
+    });
+
+    localStorage.setItem(
+        "vivafitWorkouts",
+        JSON.stringify(workouts)
+    );
+
+    renderSavedWorkouts();
+
+}
+
+
+savedWorkoutsContainer.addEventListener("click", function (e) {
+
+    const btn = e.target.closest(".remove-workout-btn");
+
+    if (!btn) {
+        return;
+    }
+
+    removeWorkout(btn.dataset.id);
+
+});
+
+
+renderSavedWorkouts();
