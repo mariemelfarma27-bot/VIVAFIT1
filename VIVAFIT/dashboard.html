@@ -56,6 +56,12 @@
                     Workouts
                 </a>
 
+                <a href="planner.html"
+                   class="text-white text-decoration-none">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    Planner
+                </a>
+
                 <a href="nutrition.html"
                    class="text-white text-decoration-none">
                     <i class="fa-solid fa-utensils"></i>
@@ -183,7 +189,7 @@
 
             <span class="welcome">RECENT ACTIVITY</span>
 
-            <h2>Keep going! 🔥</h2>
+            <h2 id="dashboardQuote">Keep going! 🔥</h2>
 
             <div class="d-flex justify-content-between align-items-center mt-4">
                 <div>
@@ -212,5 +218,15 @@
 
 </div>
 </main>
+
+<script src="js/motivational-quotes.js"></script>
+<script>
+(function () {
+    var fallback = "Push harder than yesterday if you want a different tomorrow.";
+    var el = document.getElementById("dashboardQuote");
+    try { renderRandomQuote("dashboardQuote"); }
+    catch (e) { if (el) el.textContent = fallback; }
+})();
+</script>
 </body>
 </html>

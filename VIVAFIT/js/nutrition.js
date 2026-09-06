@@ -291,6 +291,265 @@ function updateDailyProgress() {
 }
 
 // =========================================
+// GROCERY LIST
+// =========================================
+
+const GROCERY_CHECKED_KEY = "vivafitGroceryChecked";
+
+const groceryOverlay = document.getElementById("groceryOverlay");
+const groceryListBtn = document.getElementById("groceryListBtn");
+const groceryCloseBtn = document.getElementById("groceryCloseBtn");
+const groceryModalBody = document.getElementById("groceryModalBody");
+const groceryListContainer = document.getElementById("groceryListContainer");
+const groceryEmpty = document.getElementById("groceryEmpty");
+const groceryModalFooter = document.getElementById("groceryModalFooter");
+const groceryClearBtn = document.getElementById("groceryClearBtn");
+const groceryRegenBtn = document.getElementById("groceryRegenBtn");
+
+const FOOD_CATEGORIES = {
+    protein: {
+        icon: "fa-solid fa-drumstick-bite",
+        keywords: [
+            "chicken", "turkey", "beef", "steak", "pork", "lamb", "fish", "salmon",
+            "tuna", "shrimp", "prawn", "crab", "lobster", "egg", "eggs", "tofu",
+            "tempeh", "seitan", "whey", "protein powder", "protein shake",
+            "ground beef", "ground turkey", "bacon", "ham", "sausage", "pepperoni",
+            "anchovy", "sardine", "mackerel", "cod", "tilapia", "halibut",
+            "duck", "goose", "veal", "bison", "venison", "rabbit",
+            "deli meat", "prosciutto", "salami", "jerky", "biltong"
+        ]
+    },
+    carbs: {
+        icon: "fa-solid fa-wheat-awn",
+        keywords: [
+            "rice", "pasta", "noodle", "bread", "oat", "oats", "oatmeal",
+            "quinoa", "cereal", "granola", "bagel", "tortilla", "wrap",
+            "potato", "sweet potato", "yam", "corn", "barley", "bulgur",
+            "couscous", "millet", "rye", "spelt", "buckwheat", "muesli",
+            "cracker", "pretzel", "pancake", "waffle", "muffin",
+            "spaghetti", "penne", "fettuccine", "macaroni", "linguine",
+            "rice cake", "pita", "naan", "flatbread", "croissant"
+        ]
+    },
+    vegetables: {
+        icon: "fa-solid fa-leaf",
+        keywords: [
+            "broccoli", "spinach", "kale", "lettuce", "cabbage", "cauliflower",
+            "carrot", "celery", "cucumber", "tomato", "pepper", "bell pepper",
+            "onion", "garlic", "mushroom", "zucchini", "squash", "pumpkin",
+            "asparagus", "green bean", "pea", "corn", "beet", "radish",
+            "turnip", "parsnip", "artichoke", "leek", "shallot", "scallion",
+            "green onion", "chili", "jalapeno", "eggplant", "okra",
+            "brussels sprout", "bok choy", "arugula", "watercress",
+            "rocket", "endive", "romaine", "mixed greens", "spring mix",
+            "sweet corn", "baby corn", "bean sprout", "alfalfa sprout"
+        ]
+    },
+    fruits: {
+        icon: "fa-solid fa-apple-whole",
+        keywords: [
+            "apple", "banana", "orange", "grape", "strawberry", "blueberry",
+            "raspberry", "blackberry", "mango", "pineapple", "peach", "pear",
+            "plum", "cherry", "kiwi", "watermelon", "melon", "cantaloupe",
+            "lemon", "lime", "grapefruit", "tangerine", "clementine",
+            "avocado", "coconut", "fig", "date", "pomegranate", "papaya",
+            "guava", "passion fruit", "dragon fruit", "lychee", "starfruit",
+            "cranberry", "currant", "elderberry", "boysenberry"
+        ]
+    },
+    dairy: {
+        icon: "fa-solid fa-cheese",
+        keywords: [
+            "milk", "cheese", "yogurt", "yoghurt", "cottage cheese",
+            "cream cheese", "sour cream", "butter", "cream", "half and half",
+            "whipped cream", "ice cream", "whey protein", "casein",
+            "parmesan", "mozzarella", "cheddar", "provolone", "swiss",
+            "brie", "feta", "ricotta", "mascarpone", "goat cheese",
+            "kefir", "buttermilk", "ghee", "paneer"
+        ]
+    }
+};
+
+function getGroceryChecked() {
+    try {
+        return JSON.parse(localStorage.getItem(GROCERY_CHECKED_KEY)) || {};
+    } catch {
+        return {};
+    }
+}
+
+function saveGroceryChecked(checked) {
+    localStorage.setItem(GROCERY_CHECKED_KEY, JSON.stringify(checked));
+}
+
+function categorizeFood(name) {
+    const lower = name.toLowerCase().trim();
+    for (const [category, data] of Object.entries(FOOD_CATEGORIES)) {
+        for (const keyword of data.keywords) {
+            if (lower.includes(keyword)) {
+                return category;
+            }
+        }
+    }
+    return "other";
+}
+
+function generateGroceryData() {
+    const meals = getMeals();
+    if (meals.length === 0) return null;
+
+    const combined = {};
+    meals.forEach(m => {
+        const key = m.name.toLowerCase().trim();
+        if (combined[key]) {
+            combined[key].protein += m.protein;
+            combined[key].carbs += m.carbs;
+            combined[key].fat += m.fat;
+            combined[key].calories += m.calories;
+            combined[key].count += 1;
+        } else {
+            combined[key] = {
+                name: m.name.trim(),
+                protein: m.protein,
+                carbs: m.carbs,
+                fat: m.fat,
+                calories: m.calories,
+                count: 1
+            };
+        }
+    });
+
+    const categorized = {};
+    for (const [key, item] of Object.entries(combined)) {
+        const cat = categorizeFood(item.name);
+        if (!categorized[cat]) categorized[cat] = [];
+        categorized[cat].push(item);
+    }
+
+    const order = ["protein", "carbs", "vegetables", "fruits", "dairy", "other"];
+    const categoryLabels = {
+        protein: "Protein",
+        carbs: "Carbohydrates",
+        vegetables: "Vegetables",
+        fruits: "Fruits",
+        dairy: "Dairy",
+        other: "Other"
+    };
+
+    return order
+        .filter(c => categorized[c] && categorized[c].length > 0)
+        .map(c => ({
+            category: c,
+            label: categoryLabels[c],
+            icon: FOOD_CATEGORIES[c]?.icon || "fa-solid fa-basket-shopping",
+            items: categorized[c].sort((a, b) => a.name.localeCompare(b.name))
+        }));
+}
+
+function renderGroceryList() {
+    const data = generateGroceryData();
+    const checked = getGroceryChecked();
+
+    if (!data) {
+        groceryEmpty.style.display = "";
+        groceryListContainer.innerHTML = "";
+        groceryModalFooter.style.display = "none";
+        return;
+    }
+
+    groceryEmpty.style.display = "none";
+    groceryModalFooter.style.display = "";
+
+    groceryListContainer.innerHTML = data.map(group => `
+        <div class="grocery-category">
+            <div class="grocery-category-header">
+                <div class="grocery-category-icon ${group.category}">
+                    <i class="${group.icon}"></i>
+                </div>
+                <span class="grocery-category-name">${group.label}</span>
+            </div>
+            ${group.items.map(item => {
+                const id = item.name.toLowerCase().replace(/\s+/g, "_");
+                const isChecked = checked[id] ? "purchased" : "";
+                const checkIcon = checked[id] ? "fa-solid fa-check" : "";
+                const macros = [];
+                if (item.protein > 0) macros.push(`P: ${Math.round(item.protein)}g`);
+                if (item.carbs > 0) macros.push(`C: ${Math.round(item.carbs)}g`);
+                if (item.fat > 0) macros.push(`F: ${Math.round(item.fat)}g`);
+                const qty = macros.join("  ·  ") || `${item.calories} kcal`;
+                const suffix = item.count > 1 ? ` (×${item.count})` : "";
+                return `
+                    <div class="grocery-item ${isChecked}" data-id="${id}">
+                        <div class="grocery-check" data-id="${id}">
+                            <i class="${checkIcon}"></i>
+                        </div>
+                        <div class="grocery-item-info">
+                            <div class="grocery-item-name">${item.name}${suffix}</div>
+                            <div class="grocery-item-qty">${qty}</div>
+                        </div>
+                    </div>
+                `;
+            }).join("")}
+        </div>
+    `).join("");
+}
+
+groceryListBtn.addEventListener("click", () => {
+    renderGroceryList();
+    groceryOverlay.classList.add("active");
+    document.body.style.overflow = "hidden";
+});
+
+function closeGroceryModal() {
+    groceryOverlay.classList.remove("active");
+    document.body.style.overflow = "";
+}
+
+groceryCloseBtn.addEventListener("click", closeGroceryModal);
+
+groceryOverlay.addEventListener("click", (e) => {
+    if (e.target === groceryOverlay) closeGroceryModal();
+});
+
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && groceryOverlay.classList.contains("active")) {
+        closeGroceryModal();
+    }
+});
+
+groceryListContainer.addEventListener("click", (e) => {
+    const check = e.target.closest(".grocery-check");
+    if (!check) return;
+
+    const id = check.dataset.id;
+    const checked = getGroceryChecked();
+    const item = check.closest(".grocery-item");
+
+    if (checked[id]) {
+        delete checked[id];
+        item.classList.remove("purchased");
+        check.innerHTML = "";
+    } else {
+        checked[id] = true;
+        item.classList.add("purchased");
+        check.innerHTML = '<i class="fa-solid fa-check"></i>';
+    }
+
+    saveGroceryChecked(checked);
+});
+
+groceryClearBtn.addEventListener("click", () => {
+    groceryListContainer.innerHTML = "";
+    groceryEmpty.style.display = "";
+    groceryModalFooter.style.display = "none";
+    saveGroceryChecked({});
+});
+
+groceryRegenBtn.addEventListener("click", () => {
+    renderGroceryList();
+});
+
+// =========================================
 // INIT
 // =========================================
 

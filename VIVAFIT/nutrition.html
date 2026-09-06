@@ -94,6 +94,16 @@
 
 
                 <a
+                    href="planner.html"
+                    class="text-white text-decoration-none">
+
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    Planner
+
+                </a>
+
+
+                <a
                     href="nutrition.html"
                     class="text-white text-decoration-none">
 
@@ -435,12 +445,23 @@
 
                 </div>
 
-                <button class="add-meal-btn" id="addMealBtn">
+                <div class="meals-header-actions">
 
-                    <i class="fa-solid fa-plus"></i>
-                    Add Meal
+                    <button class="grocery-btn" id="groceryListBtn">
 
-                </button>
+                        <i class="fa-solid fa-cart-shopping"></i>
+                        Generate Grocery List
+
+                    </button>
+
+                    <button class="add-meal-btn" id="addMealBtn">
+
+                        <i class="fa-solid fa-plus"></i>
+                        Add Meal
+
+                    </button>
+
+                </div>
 
             </div>
 
@@ -679,6 +700,69 @@
 
 
     </main>
+
+
+    <!-- GROCERY LIST MODAL -->
+
+    <div class="grocery-overlay" id="groceryOverlay">
+
+        <div class="grocery-modal">
+
+            <div class="grocery-modal-header">
+
+                <div class="grocery-modal-title">
+
+                    <i class="fa-solid fa-cart-shopping"></i>
+
+                    <h3>Grocery List</h3>
+
+                </div>
+
+                <button class="grocery-close-btn" id="groceryCloseBtn">
+
+                    <i class="fa-solid fa-xmark"></i>
+
+                </button>
+
+            </div>
+
+            <div class="grocery-modal-body" id="groceryModalBody">
+
+                <div class="grocery-empty" id="groceryEmpty">
+
+                    <i class="fa-solid fa-basket-shopping"></i>
+
+                    No items to show.<br>
+
+                    Add some meals first, then generate your list.
+
+                </div>
+
+                <div id="groceryListContainer"></div>
+
+            </div>
+
+            <div class="grocery-modal-footer" id="groceryModalFooter">
+
+                <button class="grocery-action-btn grocery-clear-btn" id="groceryClearBtn">
+
+                    <i class="fa-solid fa-trash-can"></i>
+                    Clear List
+
+                </button>
+
+                <button class="grocery-action-btn grocery-regen-btn" id="groceryRegenBtn">
+
+                    <i class="fa-solid fa-rotate"></i>
+                    Regenerate
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
 
 
 

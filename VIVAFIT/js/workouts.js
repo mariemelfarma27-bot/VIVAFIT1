@@ -114,26 +114,11 @@ const workouts = [
             { name: "Leg Curl", sets: 3, reps: "12", rest: "45s" },
             { name: "Leg Extension", sets: 3, reps: "15", rest: "45s" }
         ]
-    },
-    {
-        id: "ant-post",
-        name: "Anterior / Posterior",
-        category: "full-body",
-        icon: "fa-solid fa-arrows-left-right",
-        description: "Balance your body with front and back chain training.",
-        duration: "48 min",
-        difficulty: "Medium",
-        exercises: [
-            { name: "Front Squat", sets: 4, reps: "8", rest: "90s" },
-            { name: "Romanian Deadlift", sets: 4, reps: "10", rest: "90s" },
-            { name: "Overhead Press", sets: 3, reps: "10", rest: "60s" },
-            { name: "Barbell Row", sets: 3, reps: "12", rest: "60s" },
-            { name: "Hip Thrust", sets: 3, reps: "12", rest: "60s" }
-        ]
     }
 ];
 
 const STORAGE_KEY = "vivafitWorkouts";
+const SUBSTITUTION_KEY = "vivafitSubstitutionHistory";
 
 // =========================================
 // DOM REFERENCES
@@ -154,6 +139,7 @@ const modalCategory = document.getElementById("modalCategory");
 const modalExerciseList = document.getElementById("modalExerciseList");
 
 let currentWorkout = null;
+let currentWorkoutExercises = null;
 
 // =========================================
 // RENDER WORKOUT CARDS
@@ -234,6 +220,7 @@ filterButtons.forEach(btn => {
 
 function openModal(workout) {
     currentWorkout = workout;
+    currentWorkoutExercises = workout.exercises.map(ex => ({ ...ex }));
 
     modalTitle.textContent = workout.name;
     modalDescription.textContent = workout.description;
@@ -242,30 +229,79 @@ function openModal(workout) {
     modalDifficulty.textContent = workout.difficulty;
     modalCategory.textContent = workout.category.replace("-", " ");
 
-    modalExerciseList.innerHTML = "";
-    workout.exercises.forEach((ex, i) => {
-        const li = document.createElement("li");
-        li.className = "exercise-item";
-        li.innerHTML = `
-            <div class="exercise-number">${i + 1}</div>
-            <div class="exercise-info">
-                <p class="exercise-name">${ex.name}</p>
-                <p class="exercise-details">${ex.sets} sets x ${ex.reps}</p>
-            </div>
-            <div class="exercise-badge">Rest: ${ex.rest}</div>
-        `;
-        modalExerciseList.appendChild(li);
-    });
+    renderExerciseList();
+
+    const bannerContainer = document.getElementById("adaptiveBannerContainer");
+    if (bannerContainer && typeof renderAdaptiveBanner === "function") {
+        renderAdaptiveBanner(workout, "adaptiveBannerContainer");
+    }
 
     updateSaveButton();
     modal.classList.add("active");
     document.body.style.overflow = "hidden";
 }
 
+function renderExerciseList() {
+    modalExerciseList.innerHTML = "";
+
+    currentWorkoutExercises.forEach((ex, i) => {
+        const li = document.createElement("li");
+        li.className = "exercise-item" + (ex._substituted ? " substituted" : "");
+        li.innerHTML = `
+            <div class="exercise-number">${i + 1}</div>
+            <div class="exercise-info">
+                <p class="exercise-name">${ex.name}</p>
+                <p class="exercise-details">${ex.sets} sets x ${ex.reps}</p>
+                ${ex._substituted ? '<span class="substituted-badge"><i class="fa-solid fa-shuffle"></i> Substituted</span>' : ''}
+            </div>
+            <button class="exercise-guide-btn" data-exercise-name="${ex.name}">
+                <i class="fa-solid fa-circle-info"></i> Guide
+            </button>
+            <button class="exercise-replace-btn" data-exercise-index="${i}">
+                <i class="fa-solid fa-shuffle"></i> Replace
+            </button>
+        `;
+        modalExerciseList.appendChild(li);
+    });
+
+    modalExerciseList.querySelectorAll(".exercise-guide-btn").forEach(btn => {
+        btn.addEventListener("click", function (e) {
+            e.stopPropagation();
+            const name = this.dataset.exerciseName;
+            if (typeof openExerciseGuide === "function") {
+                openExerciseGuide(name);
+            }
+        });
+    });
+
+    modalExerciseList.querySelectorAll(".exercise-replace-btn").forEach(btn => {
+        btn.addEventListener("click", function (e) {
+            e.stopPropagation();
+            const idx = parseInt(this.dataset.exerciseIndex);
+            const ex = currentWorkoutExercises[idx];
+            if (!ex || typeof openExerciseSubstitution === "undefined") return;
+
+            openExerciseSubstitution({
+                exerciseName: ex.name,
+                originalExercise: ex,
+                workoutId: currentWorkout.id,
+                userEquipment: getUserEquipment(),
+                userLevel: getUserLevel(),
+                onSelect: function (replacement) {
+                    currentWorkoutExercises[idx] = replacement;
+                    currentWorkout.exercises = currentWorkoutExercises;
+                    renderExerciseList();
+                }
+            });
+        });
+    });
+}
+
 function closeModal() {
     modal.classList.remove("active");
     document.body.style.overflow = "";
     currentWorkout = null;
+    currentWorkoutExercises = null;
 }
 
 function updateSaveButton() {
@@ -327,11 +363,59 @@ modalSaveBtn.addEventListener("click", () => {
 });
 
 // =========================================
+// SUBSTITUTION HISTORY DISPLAY
+// =========================================
+
+function renderSubstitutionHistory(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    let history = [];
+    try {
+        history = JSON.parse(localStorage.getItem(SUBSTITUTION_KEY)) || [];
+    } catch (e) {
+        history = [];
+    }
+
+    if (history.length === 0) {
+        container.innerHTML = '<div class="adaptive-history-empty"><i class="fa-solid fa-shuffle"></i><p>No exercise substitutions yet. Use the "Replace" button in workout modals to swap exercises.</p></div>';
+        return;
+    }
+
+    let html = '<div class="adaptive-history-list">';
+
+    var recentHistory = history.slice(-10).reverse();
+
+    recentHistory.forEach(function (entry) {
+        var date = new Date(entry.date);
+        var dateStr = date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+        html += '<div class="adaptive-history-item">';
+        html += '<div class="adaptive-history-date">' + dateStr + '</div>';
+        html += '<div class="adaptive-history-workout">' + entry.originalExercise + ' → ' + entry.alternativeExercise + '</div>';
+        html += '<div class="adaptive-history-adjustments">';
+        html += '<span class="history-adj badge-keep">' + (entry.reason || 'User selected') + '</span>';
+        html += '</div>';
+        html += '</div>';
+    });
+
+    html += '</div>';
+
+    container.innerHTML = html;
+}
+
+// =========================================
 // INIT
 // =========================================
 
 document.addEventListener("DOMContentLoaded", () => {
     renderWorkoutCards();
+
+    if (typeof renderAdaptiveHistory === "function") {
+        renderAdaptiveHistory("adaptiveHistoryContainer");
+    }
+
+    renderSubstitutionHistory("substitutionHistoryContainer");
 
     const todayBtn = document.getElementById("todayStartBtn");
     if (todayBtn) {

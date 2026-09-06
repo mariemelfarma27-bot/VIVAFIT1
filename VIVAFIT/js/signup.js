@@ -93,6 +93,10 @@ form.addEventListener("submit", function (event) {
         spinner.style.display = "none";
         signText.textContent = "Account Created! ✓";
 
+        setTimeout(function () {
+            window.location.href = "dashboard.html";
+        }, 500);
+
     }, 1500);
 
 });

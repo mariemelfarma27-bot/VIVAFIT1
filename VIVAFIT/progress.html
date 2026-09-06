@@ -20,6 +20,9 @@
 
     <!-- Progress CSS -->
     <link rel="stylesheet" href="css/progress.css">
+
+    <!-- Adaptive Workout CSS -->
+    <link rel="stylesheet" href="css/adaptive.css">
 </head>
 
 <body>
@@ -62,6 +65,10 @@
                 <a href="workouts.html" class="text-white text-decoration-none">
                     <i class="fa-solid fa-dumbbell"></i>
                     Workouts
+                </a>
+                <a href="planner.html" class="text-white text-decoration-none">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    Planner
                 </a>
                 <a href="nutrition.html" class="text-white text-decoration-none">
                     <i class="fa-solid fa-utensils"></i>
@@ -291,10 +298,26 @@
         </div>
 
 
+        <!-- ADAPTIVE INSIGHTS -->
+
+        <div class="progress-section">
+            <div class="chart-card">
+                <div class="section-header">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <h2>Adaptive Insights</h2>
+                    <span class="section-badge">SMART</span>
+                </div>
+
+                <div id="progressAdaptiveInsights"></div>
+            </div>
+        </div>
+
+
     </main>
 
 
     <!-- JavaScript -->
+    <script src="js/adaptive.js"></script>
     <script src="js/progress.js"></script>
 
 </body>

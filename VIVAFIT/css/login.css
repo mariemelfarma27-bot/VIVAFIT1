@@ -1190,3 +1190,16 @@ body {
     }
 
 }
+
+
+/* =========================================
+   NAV ACTIVE STATE
+========================================== */
+
+.planner-nav-active {
+
+    color: var(--red) !important;
+
+    font-weight: 700;
+
+}

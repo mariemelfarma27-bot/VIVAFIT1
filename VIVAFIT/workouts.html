@@ -32,6 +32,15 @@
     <!-- Workout Modal CSS -->
     <link rel="stylesheet" href="css/workout-modal.css">
 
+    <!-- Adaptive Workout CSS -->
+    <link rel="stylesheet" href="css/adaptive.css">
+
+    <!-- Exercise Substitution CSS -->
+    <link rel="stylesheet" href="css/substitution.css">
+
+    <!-- Exercise Guide CSS -->
+    <link rel="stylesheet" href="css/exercise-guide.css">
+
 </head>
 
 
@@ -97,6 +106,16 @@
 
                     <i class="fa-solid fa-dumbbell"></i>
                     Workouts
+
+                </a>
+
+
+                <a
+                    href="planner.html"
+                    class="text-white text-decoration-none">
+
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    Planner
 
                 </a>
 
@@ -259,6 +278,36 @@
 
 
 
+        <!-- ADAPTIVE HISTORY -->
+
+        <div class="adaptive-section" id="adaptiveHistorySection">
+
+            <div class="section-header">
+                <i class="fa-solid fa-chart-line"></i>
+                <h2>Adaptive History</h2>
+            </div>
+
+            <div id="adaptiveHistoryContainer"></div>
+
+        </div>
+
+
+
+        <!-- SUBSTITUTION HISTORY -->
+
+        <div class="adaptive-section" id="substitutionHistorySection">
+
+            <div class="section-header">
+                <i class="fa-solid fa-shuffle"></i>
+                <h2>Exercise Substitutions</h2>
+            </div>
+
+            <div id="substitutionHistoryContainer"></div>
+
+        </div>
+
+
+
         <!-- RECENT ACTIVITY -->
 
         <div class="activity-card">
@@ -276,7 +325,7 @@
                     RECENT ACTIVITY
                 </p>
 
-                <h3>
+                <h3 id="workoutQuote">
                     Keep going! 🔥
                 </h3>
 
@@ -397,6 +446,8 @@
 
                 </ul>
 
+                <div id="adaptiveBannerContainer"></div>
+
             </div>
 
             <div class="modal-footer">
@@ -423,8 +474,15 @@
 
 
 
+    <!-- Motivational Quotes -->
+    <script src="js/motivational-quotes.js"></script>
+
     <!-- Workouts JS -->
+    <script src="js/adaptive.js"></script>
+    <script src="js/substitution.js"></script>
+    <script src="js/exercise-guide.js"></script>
     <script src="js/workouts.js"></script>
+    <script>renderRandomQuote("workoutQuote");</script>
 
 </body>
 
