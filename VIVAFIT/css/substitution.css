@@ -630,3 +630,197 @@
         padding: 3px 8px;
     }
 }
+
+/* =========================================
+   AI — THINKING / LOADING STATE
+========================================= */
+
+.ai-thinking {
+    text-align: center;
+    padding: 44px 20px 30px;
+}
+
+.ai-thinking-spinner {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(255, 21, 48, 0.10);
+    border: 1px solid rgba(255, 21, 48, 0.25);
+    color: #ff1530;
+    font-size: 26px;
+    animation: aiPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes aiPulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 21, 48, 0.25); }
+    50% { transform: scale(1.1); box-shadow: 0 0 0 12px rgba(255, 21, 48, 0); }
+}
+
+.ai-thinking-title {
+    color: white;
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0 0 6px;
+}
+
+.ai-thinking-sub {
+    color: #a6a9b5;
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* =========================================
+   AI — NOTES / STATUS MESSAGES
+========================================= */
+
+.ai-powered-note {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #8ab4ff;
+    font-size: 11px;
+    margin: 0 0 14px;
+    padding: 8px 12px;
+    background: rgba(90, 140, 255, 0.08);
+    border: 1px solid rgba(90, 140, 255, 0.18);
+    border-radius: 8px;
+}
+
+.offline-ai-note {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #ff9a76;
+    font-size: 11px;
+    margin: 0 0 14px;
+    padding: 8px 12px;
+    background: rgba(255, 154, 118, 0.08);
+    border: 1px solid rgba(255, 154, 118, 0.18);
+    border-radius: 8px;
+}
+
+/* =========================================
+   AI — ALTERNATIVE CARD
+========================================= */
+
+.ai-alt-card {
+    border-color: rgba(90, 140, 255, 0.22);
+}
+
+.ai-alt-card:hover {
+    border-color: rgba(90, 140, 255, 0.45);
+}
+
+.ai-rank {
+    background: linear-gradient(135deg, rgba(90, 140, 255, 0.18), rgba(255, 21, 48, 0.16));
+    color: #8ab4ff;
+}
+
+.ai-reason {
+    background: linear-gradient(135deg, rgba(90, 140, 255, 0.07), rgba(255, 21, 48, 0.05));
+    border-color: rgba(90, 140, 255, 0.2);
+}
+
+/* =========================================
+   AI — FORM GUIDE
+========================================= */
+
+.ai-form-guide {
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 14px;
+}
+
+.ai-form-guide-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #ff9a76;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+}
+
+.ai-form-guide-header i {
+    font-size: 12px;
+}
+
+.ai-steps {
+    margin: 0 0 10px;
+    padding-left: 18px;
+    color: #d2d4dc;
+    font-size: 12.5px;
+    line-height: 1.7;
+}
+
+.ai-steps li {
+    margin-bottom: 5px;
+}
+
+.ai-tips {
+    list-style: none;
+    margin: 0 0 10px;
+    padding: 0;
+}
+
+.ai-tips li {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    color: #b8c4e0;
+    font-size: 12.5px;
+    line-height: 1.6;
+    margin-bottom: 6px;
+}
+
+.ai-tips li i {
+    color: #45e58a;
+    font-size: 11px;
+    margin-top: 3px;
+    flex-shrink: 0;
+}
+
+.ai-mistakes {
+    background: rgba(255, 74, 96, 0.06);
+    border: 1px solid rgba(255, 74, 96, 0.15);
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+
+.ai-mistakes-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #ff4a60;
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+
+.ai-mistakes p {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    color: #ccb9bd;
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 0 0 4px;
+}
+
+.ai-mistakes p i {
+    color: #ff4a60;
+    font-size: 10px;
+    margin-top: 3px;
+    flex-shrink: 0;
+}

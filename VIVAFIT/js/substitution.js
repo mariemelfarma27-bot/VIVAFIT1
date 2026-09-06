@@ -209,6 +209,265 @@ var difficultyOrder = { beginner: 1, intermediate: 2, advanced: 3 };
 
 var substitutionModal = null;
 var currentSubstitutionContext = null;
+var aiRequestId = 0;
+
+// =========================================
+// GEMINI AI — EXERCISE REPLACEMENT
+// =========================================
+
+function getApiBaseUrl() {
+    try {
+        if (
+            typeof window !== "undefined" &&
+            window.location &&
+            (window.location.protocol === "http:" || window.location.protocol === "https:")
+        ) {
+            return window.location.origin;
+        }
+    } catch (e) {}
+    return "http://localhost:3000";
+}
+
+var AI_REQUEST_TIMEOUT_MS = 15000;
+var AI_CACHE_KEY = "vivafitAiSuggestionsCache";
+var AI_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+function getAiCache() {
+    try {
+        return JSON.parse(localStorage.getItem(AI_CACHE_KEY)) || {};
+    } catch (e) {
+        return {};
+    }
+}
+
+function aiCacheKeyFor(context) {
+    return (context.originalName + "|" + (context.userEquipment || "full-gym"));
+}
+
+function getAiCacheHit(context) {
+    try {
+        var cache = getAiCache();
+        var item = cache[aiCacheKeyFor(context)];
+        if (!item || !item.data || !item.ts) return null;
+        if (Date.now() - item.ts > AI_CACHE_TTL_MS) return null;
+        return item.data;
+    } catch (e) {
+        return null;
+    }
+}
+
+function cacheAiResult(context, alternatives) {
+    try {
+        var cache = getAiCache();
+        cache[aiCacheKeyFor(context)] = { ts: Date.now(), data: alternatives };
+        var keys = Object.keys(cache);
+        if (keys.length > 100) {
+            delete cache[keys[0]];
+        }
+        localStorage.setItem(AI_CACHE_KEY, JSON.stringify(cache));
+    } catch (e) {}
+}
+
+function fetchAiAlternatives(context) {
+    var payload = {
+        exerciseName: context.originalName,
+        userEquipment: context.userEquipment || "full-gym",
+        userLevel: context.userLevel || "intermediate"
+    };
+
+    var controller = (typeof AbortController !== "undefined") ? new AbortController() : null;
+    var timeoutId = null;
+
+    var request = fetch(getApiBaseUrl() + "/api/replace-exercise", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: controller ? controller.signal : undefined
+    }).then(function (response) {
+        if (!response.ok) {
+            return response.json().then(function (errData) {
+                var err = new Error((errData && errData.message) || "AI request failed");
+                err.code = (errData && errData.error) || "API_ERROR";
+                throw err;
+            });
+        }
+        return response.json();
+    }).then(function (data) {
+        var list = data && data.suggestions && data.suggestions.alternatives;
+        if (!list || !list.length) {
+            throw new Error("AI returned no alternatives");
+        }
+        return list;
+    });
+
+    var timeout = new Promise(function (resolve, reject) {
+        timeoutId = setTimeout(function () {
+            if (controller) controller.abort();
+            reject(new Error("AI request timed out"));
+        }, AI_REQUEST_TIMEOUT_MS);
+    });
+
+    var race = Promise.race([request, timeout]);
+    race.then(
+        function () { clearTimeout(timeoutId); },
+        function () { clearTimeout(timeoutId); }
+    );
+
+    return race;
+}
+
+function renderAiThinking() {
+    return '\
+        <div class="ai-thinking">\
+            <div class="ai-thinking-spinner">\
+                <i class="fa-solid fa-wand-magic-sparkles"></i>\
+            </div>\
+            <p class="ai-thinking-title">AI is finding your replacement...</p>\
+            <p class="ai-thinking-sub">Analyzing your exercise and available equipment to suggest the best alternative.</p>\
+        </div>\
+    ' + serverHintHtml();
+}
+
+function isFileProtocol() {
+    try {
+        return window.location.protocol === "file:";
+    } catch (e) {
+        return false;
+    }
+}
+
+function serverHintHtml() {
+    if (!isFileProtocol()) return "";
+    return '\
+        <p class="offline-ai-note"><i class="fa-solid fa-link"></i> You opened this page directly from the file. To use the AI suggestions, open it through the server instead: <a href="http://localhost:3000/workouts.html" target="_blank" rel="noopener" style="color:#ff9a76;font-weight:700;text-decoration:underline;">http://localhost:3000/workouts.html</a></p>\
+    ';
+}
+
+function renderAiAlternatives(alternatives) {
+    var container = document.getElementById("subAlternativesList");
+    if (!container) return;
+
+    var html = '';
+    html += '<p class="substitution-list-label"><i class="fa-solid fa-wand-magic-sparkles"></i> AI SUGGESTIONS</p>';
+    html += '<p class="ai-powered-note"><i class="fa-solid fa-robot"></i> Powered by AI — each suggestion includes form guidance.</p>';
+
+    for (var i = 0; i < alternatives.length; i++) {
+        var alt = alternatives[i];
+
+        var diff = alt.difficulty || "intermediate";
+        var diffClass = ["beginner", "intermediate", "advanced"].indexOf(diff) >= 0 ? diff : "intermediate";
+
+        html += '<div class="substitution-alt-card ai-alt-card">';
+
+        html += '  <div class="sub-alt-header">';
+        html += '    <div class="sub-alt-rank ai-rank"><i class="fa-solid fa-wand-magic-sparkles"></i></div>';
+        html += '    <div class="sub-alt-title">';
+        html += '      <h4>' + escapeHtml(alt.name || "Suggested Exercise") + '</h4>';
+        html += '      <span class="sub-alt-difficulty ' + diffClass + '">' + escapeHtml(diff) + '</span>';
+        html += '    </div>';
+        html += '  </div>';
+
+        html += '  <div class="sub-alt-tags">';
+        if (alt.muscle) {
+            html += '    <span class="sub-tag muscle-tag"><i class="fa-solid fa-bullseye"></i> ' + escapeHtml(capitalize(String(alt.muscle))) + '</span>';
+        }
+        if (alt.equipment) {
+            html += '    <span class="sub-tag equip-tag"><i class="fa-solid fa-dumbbell"></i> ' + escapeHtml(capitalize(String(alt.equipment).replace(/-/g, " "))) + '</span>';
+        }
+        html += '  </div>';
+
+        if (alt.reason) {
+            html += '  <div class="sub-alt-reason ai-reason">';
+            html += '    <div class="sub-reason-header"><i class="fa-solid fa-sparkles"></i> Why this exercise?</div>';
+            html += '    <p>' + escapeHtml(alt.reason) + '</p>';
+            html += '  </div>';
+        }
+
+        var steps = Array.isArray(alt.steps) ? alt.steps : [];
+        var tips = Array.isArray(alt.tips) ? alt.tips : [];
+        var mistakes = Array.isArray(alt.commonMistakes) ? alt.commonMistakes : (Array.isArray(alt.mistakes) ? alt.mistakes : []);
+
+        if (steps.length || tips.length || mistakes.length) {
+            html += '  <div class="ai-form-guide">';
+            html += '    <div class="ai-form-guide-header"><i class="fa-solid fa-clipboard-check"></i> FORM GUIDE</div>';
+
+            if (steps.length) {
+                html += '    <ol class="ai-steps">';
+                for (var s = 0; s < steps.length; s++) {
+                    html += '      <li>' + escapeHtml(steps[s]) + '</li>';
+                }
+                html += '    </ol>';
+            }
+
+            if (tips.length) {
+                html += '    <ul class="ai-tips">';
+                for (var t = 0; t < tips.length; t++) {
+                    html += '      <li><i class="fa-solid fa-circle-check"></i> ' + escapeHtml(tips[t]) + '</li>';
+                }
+                html += '    </ul>';
+            }
+
+            if (mistakes.length) {
+                html += '    <div class="ai-mistakes">';
+                html += '      <div class="ai-mistakes-header"><i class="fa-solid fa-triangle-exclamation"></i> AVOID</div>';
+                for (var m = 0; m < mistakes.length; m++) {
+                    html += '      <p><i class="fa-solid fa-xmark"></i> ' + escapeHtml(mistakes[m]) + '</p>';
+                }
+                html += '    </div>';
+            }
+
+            html += '  </div>';
+        }
+
+        html += '  <button class="sub-select-btn" data-ai-index="' + i + '">';
+        html += '    <i class="fa-solid fa-check"></i> Select This Exercise';
+        html += '  </button>';
+        html += '</div>';
+    }
+
+    container.innerHTML = html;
+
+    var buttons = container.querySelectorAll(".sub-select-btn");
+    for (var j = 0; j < buttons.length; j++) {
+        buttons[j].addEventListener("click", function () {
+            var idx = parseInt(this.dataset.aiIndex);
+            selectSubstitutionAi(alternatives[idx]);
+        });
+    }
+}
+
+function selectSubstitutionAi(alt) {
+    var ctx = currentSubstitutionContext;
+    if (!ctx) return;
+
+    var replacement = {
+        name: (alt && alt.name) || ctx.originalName,
+        sets: (alt && alt.sets) || ctx.originalExercise.sets,
+        reps: (alt && alt.reps) || ctx.originalExercise.reps,
+        rest: (alt && alt.rest) || ctx.originalExercise.rest,
+        _substituted: true,
+        _originalName: ctx.originalName,
+        _ai: true
+    };
+
+    logSubstitution(
+        ctx.workoutId || "unknown",
+        ctx.originalName,
+        replacement.name,
+        (alt && alt.reason) || "AI suggested alternative"
+    );
+
+    if (typeof ctx.onSelect === "function") {
+        ctx.onSelect(replacement);
+    }
+
+    closeSubstitutionModal();
+}
+
+function capitalize(str) {
+    if (!str) return "";
+    return str.charAt(0).toUpperCase() + str.slice(1);
+}
 
 // =========================================
 // EXERCISE LOOKUP HELPERS
@@ -335,96 +594,124 @@ function arePatternsCompatible(a, b) {
 // =========================================
 // FIND ALTERNATIVES
 // =========================================
-
 function findAlternatives(exerciseName, userEquipment, userLevel) {
     var original = getExerciseMeta(exerciseName);
-    if (!original) return [];
 
-    var userTier = equipmentTiers[userEquipment] || 4;
+    if (!original) {
+        return [];
+    }
+
     var candidates = [];
+    var userTier = equipmentTiers[userEquipment] || 4;
 
-    var recentSubs = getSubstitutionHistory();
+    // Avoid recently used substitutions
+    var history = getSubstitutionHistory();
     var recentNames = {};
-    var cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    for (var h = 0; h < recentSubs.length; h++) {
-        if (new Date(recentSubs[h].date).getTime() > cutoff) {
-            recentNames[recentSubs[h].alternativeExercise] = true;
-        }
-    }
 
-    var searchTiers = [];
-    for (var tier in equipmentTiers) {
-        if (equipmentTiers[tier] <= userTier + 1) {
-            searchTiers.push(tier);
-        }
-    }
+    history.forEach(function (item) {
+        if (item && item.replacement && item.date) {
+            var diff = Date.now() - new Date(item.date).getTime();
+            var days = diff / (1000 * 60 * 60 * 24);
 
-    for (var muscle in exerciseDB) {
-        for (var t = 0; t < searchTiers.length; t++) {
-            var tierKey = searchTiers[t];
-            var dbKey = tierKey === "full-gym" ? "fullGym" :
-                        tierKey === "home-gym" ? "homeGym" : tierKey;
-            var pool = exerciseDB[muscle][dbKey];
-            if (!pool) continue;
-
-            for (var i = 0; i < pool.length; i++) {
-                var ex = pool[i];
-                var altMeta = getExerciseMeta(ex.name);
-
-                if (!altMeta) {
-                    altMeta = {
-                        muscle: muscle,
-                        pattern: original.pattern,
-                        equipment: tierKey,
-                        difficulty: userLevel || "intermediate"
-                    };
-                }
-
-                if (ex.name === exerciseName) continue;
-
-                var scoring = scoreAlternative(original, {
-                    name: ex.name,
-                    muscle: altMeta.muscle,
-                    pattern: altMeta.pattern,
-                    equipment: altMeta.equipment,
-                    difficulty: altMeta.difficulty
-                }, userEquipment);
-
-                if (scoring.suitable) {
-                    var finalScore = scoring.score;
-                    if (recentNames[ex.name]) {
-                        finalScore -= 12;
-                    }
-                    candidates.push({
-                        name: ex.name,
-                        muscle: altMeta.muscle,
-                        pattern: altMeta.pattern,
-                        equipment: altMeta.equipment,
-                        difficulty: altMeta.difficulty,
-                        instruction: ex.instruction,
-                        score: finalScore,
-                        reasons: scoring.reasons,
-                        tier: tierKey
-                    });
-                }
+            if (days <= 7) {
+                recentNames[item.replacement] = true;
             }
         }
-    }
+    });
 
-    candidates.sort(function (a, b) { return b.score - a.score; });
+    // Use exerciseMapping directly
+    for (var name in exerciseMapping) {
 
-    var seen = {};
-    var unique = [];
-    for (var j = 0; j < candidates.length; j++) {
-        if (!seen[candidates[j].name]) {
-            seen[candidates[j].name] = true;
-            unique.push(candidates[j]);
+        if (name === exerciseName) {
+            continue;
         }
+
+        var altMeta = exerciseMapping[name];
+
+        if (!altMeta) {
+            continue;
+        }
+
+        // Don't suggest equipment the user doesn't have
+        var altTier = equipmentTiers[altMeta.equipment] || 1;
+
+        if (altTier > userTier) {
+            continue;
+        }
+
+        var alternative = {
+            name: name,
+            muscle: altMeta.muscle,
+            pattern: altMeta.pattern,
+            equipment: altMeta.equipment,
+            difficulty: altMeta.difficulty
+        };
+
+        var scoring = scoreAlternative(
+            original,
+            alternative,
+            userEquipment
+        );
+
+        if (!scoring.suitable) {
+            continue;
+        }
+
+        // Slight penalty for recently used alternatives
+        var finalScore = scoring.score;
+
+        if (recentNames[name]) {
+            finalScore -= 10;
+        }
+
+        // Get instruction from exerciseGuideData if available
+        var instruction =
+            "Use controlled movement and maintain proper form.";
+
+        if (
+            typeof exerciseGuideData !== "undefined" &&
+            exerciseGuideData[name]
+        ) {
+            var guide = exerciseGuideData[name];
+
+            if (
+                guide.steps &&
+                guide.steps.length > 0
+            ) {
+                instruction = guide.steps[0];
+            }
+        }
+
+        candidates.push({
+            name: name,
+            muscle: altMeta.muscle,
+            pattern: altMeta.pattern,
+            equipment: altMeta.equipment,
+            difficulty: altMeta.difficulty,
+            instruction: instruction,
+            score: finalScore,
+            reasons: scoring.reasons
+        });
     }
+
+    // Highest score first
+    candidates.sort(function (a, b) {
+        return b.score - a.score;
+    });
+
+    // Remove duplicates
+    var unique = [];
+    var seen = {};
+
+    candidates.forEach(function (item) {
+        if (!seen[item.name]) {
+            seen[item.name] = true;
+            unique.push(item);
+        }
+    });
 
     return unique.slice(0, 5);
 }
-
 // =========================================
 // VOLUME PRESERVATION
 // =========================================
@@ -442,7 +729,7 @@ function preserveVolume(original, alternative) {
     }
 
     // Same equipment tier -> keep same reps
-    if (alternative.tier === (origMeta.equipment === "full-gym" ? "fullGym" : origMeta.equipment)) {
+    if (alternative.equipment === origMeta.equipment)  {
         return { sets: sets, reps: reps, rest: rest };
     }
 
@@ -558,6 +845,45 @@ function openSubstitutionModal(context) {
 
     document.getElementById("subOriginalName").textContent = context.originalName;
 
+    var requestId = ++aiRequestId;
+
+    var container = document.getElementById("subAlternativesList");
+
+    container.innerHTML = renderAiThinking();
+
+    substitutionModal.classList.add("active");
+    document.body.style.overflow = "hidden";
+
+    var cacheHit = getAiCacheHit(context);
+    if (cacheHit && cacheHit.length) {
+        renderAiAlternatives(cacheHit);
+        return;
+    }
+
+    fetchAiAlternatives(context).then(function (alternatives) {
+        if (requestId !== aiRequestId || !substitutionModal.classList.contains("active")) return;
+        cacheAiResult(context, alternatives);
+        try {
+            renderAiAlternatives(alternatives);
+        } catch (err) {
+            if (requestId !== aiRequestId) return;
+            try {
+                renderOfflineAlternatives(context);
+            } catch (err2) {
+                renderFatalError(context);
+            }
+        }
+    }).catch(function () {
+        if (requestId !== aiRequestId || !substitutionModal.classList.contains("active")) return;
+        try {
+            renderOfflineAlternatives(context);
+        } catch (err) {
+            renderFatalError(context);
+        }
+    });
+}
+
+function renderOfflineAlternatives(context) {
     var userEquipment = context.userEquipment || "full-gym";
     var userLevel = context.userLevel || "intermediate";
 
@@ -566,7 +892,7 @@ function openSubstitutionModal(context) {
     var container = document.getElementById("subAlternativesList");
 
     if (alternatives.length === 0) {
-        container.innerHTML = '\
+        container.innerHTML = serverHintHtml() + '\
             <div class="substitution-empty">\
                 <i class="fa-solid fa-circle-info"></i>\
                 <p>No suitable alternatives found for <strong>' + escapeHtml(context.originalName) + '</strong> with your current equipment and settings.</p>\
@@ -574,12 +900,14 @@ function openSubstitutionModal(context) {
         ';
     } else {
         var html = '';
+        html += serverHintHtml();
+        html += '<p class="offline-ai-note"><i class="fa-solid fa-wifi"></i> AI unavailable right now (server off or the free AI quota for today is used up) — showing smart offline suggestions instead.</p>';
         html += '<p class="substitution-list-label"><i class="fa-solid fa-wand-magic-sparkles"></i> RECOMMENDED ALTERNATIVES</p>';
 
         for (var i = 0; i < alternatives.length; i++) {
             var alt = alternatives[i];
             var volume = preserveVolume(context.originalExercise, alt);
-            var bestReason = alt.reasons[0] || "Suitable alternative";
+            var bestReason = (alt.reasons && alt.reasons[0]) || "Suitable alternative";
 
             html += '<div class="substitution-alt-card" data-index="' + i + '">';
             html += '  <div class="sub-alt-header">';
@@ -632,9 +960,17 @@ function openSubstitutionModal(context) {
             });
         }
     }
+}
 
-    substitutionModal.classList.add("active");
-    document.body.style.overflow = "hidden";
+function renderFatalError(context) {
+    var container = document.getElementById("subAlternativesList");
+    if (!container) return;
+    container.innerHTML = serverHintHtml() + '\
+        <div class="substitution-empty">\
+            <i class="fa-solid fa-circle-exclamation"></i>\
+            <p>Something went wrong while loading alternatives for <strong>' + escapeHtml(context.originalName) + '</strong>. Close the window and try again.</p>\
+        </div>\
+    ';
 }
 
 function closeSubstitutionModal() {
@@ -665,7 +1001,7 @@ function selectSubstitution(alternative) {
         ctx.workoutId || "unknown",
         ctx.originalName,
         alternative.name,
-        alternative.reasons[0] || "Selected by user"
+        alternative.reasons && alternative.reasons[0] || "Selected by user"
     );
 
     // Callback to update the workout
